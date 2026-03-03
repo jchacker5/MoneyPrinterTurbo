@@ -190,6 +190,16 @@ class VideoTermsRequest(VideoTermsParams, BaseModel):
     pass
 
 
+class YouTubeClipRequest(BaseModel):
+    youtube_url: str
+    clip_count: Optional[int] = 3
+    min_clip_duration: Optional[float] = 20.0
+    max_clip_duration: Optional[float] = 50.0
+    language: Optional[str] = ""
+    llm_enhancement: Optional[bool] = None
+    output_dir: Optional[str] = ""
+
+
 ######################################################################################################
 ######################################################################################################
 ######################################################################################################
@@ -329,6 +339,35 @@ class VideoMaterialUploadResponse(BaseResponse):
                 "message": "success",
                 "data": {
                     "file": "/MoneyPrinterTurbo/resource/videos/example.mp4",
+                },
+            },
+        }
+
+
+class YouTubeClipResponse(BaseResponse):
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": 200,
+                "message": "success",
+                "data": {
+                    "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "source_video": "/MoneyPrinterTurbo/storage/tasks/yt-clips-xxx/source.mp4",
+                    "transcript_backend": "faster-whisper",
+                    "transcript_segments": 128,
+                    "clips": [
+                        {
+                            "index": 1,
+                            "start": 34.2,
+                            "end": 63.8,
+                            "duration": 29.6,
+                            "score": 4.22,
+                            "text": "sample transcript text",
+                            "file": "/MoneyPrinterTurbo/storage/tasks/yt-clips-xxx/clip-01.mp4",
+                            "url": "http://127.0.0.1:8080/tasks/yt-clips-xxx/clip-01.mp4",
+                        }
+                    ],
+                    "workdir": "/MoneyPrinterTurbo/storage/tasks/yt-clips-xxx",
                 },
             },
         }

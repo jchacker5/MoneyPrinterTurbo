@@ -246,6 +246,61 @@ python main.py
 After launching, you can view the `API documentation` at http://127.0.0.1:8080/docs and directly test the interface
 online for a quick experience.
 
+## YouTube Auto-Clipping
+
+This repo now supports auto-clipping YouTube videos into vertical short clips:
+
+- Download video with `yt-dlp`
+- Local transcription with `faster-whisper` (fallback: `openai-whisper`)
+- Heuristic viral-moment scoring
+- Optional LLM-based score enhancement (if enabled in `config.toml`)
+- Vertical `9:16` clip rendering with `ffmpeg`
+
+### Dependencies
+
+Install required system binaries:
+
+```shell
+yt-dlp --version
+ffmpeg -version
+```
+
+Install Python dependencies:
+
+```shell
+pip install -r requirements.txt
+```
+
+### API Endpoint
+
+`POST /api/v1/clips/youtube`
+
+Example request body:
+
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "clip_count": 3,
+  "min_clip_duration": 20,
+  "max_clip_duration": 50,
+  "language": "en",
+  "llm_enhancement": false
+}
+```
+
+The response includes generated clips with local file paths and `/tasks/...` URLs.
+
+### CLI Script
+
+```shell
+python scripts/auto_clip.py \
+  --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  --clip-count 3 \
+  --min-duration 20 \
+  --max-duration 50 \
+  --language en
+```
+
 ## Voice Synthesis 🗣
 
 A list of all supported voices can be viewed here: [Voice List](./docs/voice-list.txt)
