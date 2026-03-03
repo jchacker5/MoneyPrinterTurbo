@@ -199,6 +199,17 @@ class YouTubeClipRequest(BaseModel):
     llm_enhancement: Optional[bool] = None
     output_dir: Optional[str] = ""
 
+class MultiYouTubeClipRequest(BaseModel):
+    youtube_url: Optional[str] = ""
+    source_video: Optional[str] = ""
+    clip_count: Optional[int] = 3
+    min_clip_duration: Optional[float] = 20.0
+    max_clip_duration: Optional[float] = 50.0
+    language: Optional[str] = ""
+    llm_enhancement: Optional[bool] = None
+    output_dir: Optional[str] = ""
+    engines: Optional[List[str]] = None
+
 
 ######################################################################################################
 ######################################################################################################
@@ -368,6 +379,57 @@ class YouTubeClipResponse(BaseResponse):
                         }
                     ],
                     "workdir": "/MoneyPrinterTurbo/storage/tasks/yt-clips-xxx",
+                },
+            },
+        }
+
+
+class MultiYouTubeClipResponse(BaseResponse):
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": 200,
+                "message": "success",
+                "data": {
+                    "task_id": "yt-multi-95df75b72ad945ef9db3a92de6ac7a04",
+                    "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "source_video": "/MoneyPrinterTurbo/storage/tasks/yt-multi-xxx/source.mp4",
+                    "selected_engines": ["native", "auto_editor", "pyscenedetect", "samuraigpt_plugin"],
+                    "selection_strategy": "weighted_sum",
+                    "engine_weights": {
+                        "native": 1.0,
+                        "auto_editor": 0.9,
+                        "pyscenedetect": 0.8,
+                        "samuraigpt_plugin": 1.1,
+                    },
+                    "clips": {
+                        "native": [
+                            {
+                                "index": 1,
+                                "engine": "native",
+                                "start": 34.2,
+                                "end": 63.8,
+                                "duration": 29.6,
+                                "score": 4.22,
+                                "text": "sample transcript text",
+                                "file": "/MoneyPrinterTurbo/storage/tasks/yt-multi-xxx/clips/native/clip-01.mp4",
+                            }
+                        ]
+                    },
+                    "best": [
+                        {
+                            "index": 1,
+                            "engine": "native",
+                            "start": 34.2,
+                            "end": 63.8,
+                            "duration": 29.6,
+                            "score": 4.22,
+                            "file": "/MoneyPrinterTurbo/storage/tasks/yt-multi-xxx/best/best-01.mp4",
+                            "url": "http://127.0.0.1:8080/tasks/yt-multi-xxx/best/best-01.mp4",
+                        }
+                    ],
+                    "workdir": "/MoneyPrinterTurbo/storage/tasks/yt-multi-xxx",
+                    "warnings": [],
                 },
             },
         }
