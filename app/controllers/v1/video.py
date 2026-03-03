@@ -4,7 +4,7 @@ import pathlib
 import shutil
 from typing import Union
 
-from fastapi import BackgroundTasks, Depends, Path, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, Path, Query, Request, UploadFile
 from fastapi.params import File
 from fastapi.responses import FileResponse, StreamingResponse
 from loguru import logger
@@ -19,15 +19,21 @@ from app.models.schema import (
     AudioRequest,
     BgmRetrieveResponse,
     BgmUploadResponse,
+    MultiYouTubeClipRequest,
+    MultiYouTubeClipResponse,
     SubtitleRequest,
     TaskDeletionResponse,
     TaskQueryRequest,
     TaskQueryResponse,
     TaskResponse,
     TaskVideoRequest,
+    YouTubeClipRequest,
+    YouTubeClipResponse,
+    VideoMaterialRetrieveResponse,
     VideoMaterialUploadResponse,
-    VideoMaterialRetrieveResponse
 )
+from app.services import clipping
+from app.services.clippers import MultiClipRequest, MultiClipperError, auto_clip_multi
 from app.services import state as sm
 from app.services import task as tm
 from app.utils import utils
@@ -74,6 +80,106 @@ def create_audio(
     return create_task(request, body, stop_at="audio")
 
 
+@router.post(
+    "/clips/youtube",
+    response_model=YouTubeClipResponse,
+    summary="Auto-generate viral-style vertical clips from a YouTube URL",
+)
+def create_youtube_clips(request: Request, body: YouTubeClipRequest):
+    request_id = base.get_task_id(request)
+    try:
+        result = clipping.auto_clip_youtube(
+            youtube_url=body.youtube_url,
+            clip_count=body.clip_count,
+            min_clip_duration=body.min_clip_duration,
+            max_clip_duration=body.max_clip_duration,
+            language=body.language or "",
+            llm_enhancement=body.llm_enhancement,
+            output_dir=body.output_dir or "",
+        )
+
+        endpoint = config.app.get("endpoint", "")
+        if not endpoint:
+            endpoint = str(request.base_url)
+        endpoint = endpoint.rstrip("/")
+        task_root = utils.task_dir()
+        clips = result.get("clips", [])
+        for clip in clips:
+            f = clip.get("file", "")
+            if f.startswith(task_root):
+                rel = f.replace(task_root, "tasks").replace("\\", "/")
+                clip["url"] = f"{endpoint}/{rel}"
+        return utils.get_response(200, result)
+    except clipping.ClippingError as e:
+        raise HttpException(
+            task_id=request_id,
+            status_code=400,
+            message=f"{request_id}: {str(e)}",
+        )
+    except Exception as e:
+        raise HttpException(
+            task_id=request_id,
+            status_code=500,
+            message=f"{request_id}: YouTube clipping failed: {str(e)}",
+        )
+
+
+@router.post(
+    "/clips/youtube/multi",
+    response_model=MultiYouTubeClipResponse,
+    summary="Auto-generate short clips with multi-engine selection and best-pick fusion",
+)
+def create_youtube_clips_multi(request: Request, body: MultiYouTubeClipRequest):
+    request_id = base.get_task_id(request)
+    try:
+        result = auto_clip_multi(
+            MultiClipRequest(
+                youtube_url=(body.youtube_url or "").strip(),
+                source_video=(body.source_video or "").strip(),
+                clip_count=body.clip_count or 3,
+                min_clip_duration=body.min_clip_duration or 20.0,
+                max_clip_duration=body.max_clip_duration or 50.0,
+                language=body.language or "",
+                llm_enhancement=body.llm_enhancement,
+                output_dir=body.output_dir or "",
+                selected_engines=body.engines,
+            )
+        )
+
+        endpoint = config.app.get("endpoint", "")
+        if not endpoint:
+            endpoint = str(request.base_url)
+        endpoint = endpoint.rstrip("/")
+        task_root = utils.task_dir()
+
+        def add_url(item: dict):
+            f = item.get("file", "")
+            if f.startswith(task_root):
+                rel = f.replace(task_root, "tasks").replace("\\", "/")
+                item["url"] = f"{endpoint}/{rel}"
+
+        for _, clips in (result.get("clips") or {}).items():
+            for clip in clips or []:
+                add_url(clip)
+
+        for clip in result.get("best", []) or []:
+            add_url(clip)
+
+        return utils.get_response(200, result)
+    except MultiClipperError as e:
+        raise HttpException(
+            task_id=request_id,
+            status_code=400,
+            message=f"{request_id}: {str(e)}",
+        )
+    except Exception as e:
+        raise HttpException(
+            task_id=request_id,
+            status_code=500,
+            message=f"{request_id}: multi-engine YouTube clipping failed: {str(e)}",
+        )
+
+
 def create_task(
     request: Request,
     body: Union[TaskVideoRequest, SubtitleRequest, AudioRequest],
@@ -95,8 +201,6 @@ def create_task(
         raise HttpException(
             task_id=task_id, status_code=400, message=f"{request_id}: {str(e)}"
         )
-
-from fastapi import Query
 
 @router.get("/tasks", response_model=TaskQueryResponse, summary="Get all tasks")
 def get_all_tasks(request: Request, page: int = Query(1, ge=1), page_size: int = Query(10, ge=1)):

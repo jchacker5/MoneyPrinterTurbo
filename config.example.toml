@@ -195,6 +195,56 @@ model_size = "large-v3"
 device = "CPU"
 compute_type = "int8"
 
+[youtube_clipper]
+# YouTube auto-clipping defaults (API + CLI)
+# Required binaries:
+# - yt-dlp (for download)
+# - ffmpeg (for clip rendering)
+# Optional absolute path to yt-dlp binary. Leave empty to use PATH.
+yt_dlp_path = ""
+
+# Default auto-clipping behavior
+clip_count = 3
+min_clip_duration = 20
+max_clip_duration = 50
+enable_llm_enhancement = false
+llm_enhance_weight = 1.0
+
+# Local transcription settings for faster-whisper (preferred)
+faster_whisper_model_size = "base"
+faster_whisper_device = "cpu"
+faster_whisper_compute_type = "int8"
+
+# Fallback openai-whisper model name if faster-whisper fails
+fallback_whisper_model_size = "base"
+
+# Viral scoring keyword bonuses (case-insensitive)
+viral_keywords = ["secret", "mistake", "truth", "hack", "shocking", "warning", "money", "why"]
+
+[multi_clipper]
+# Enabled engines for /api/v1/clips/youtube/multi and scripts/auto_clip_multi.py
+enabled_engines = ["native", "auto_editor", "pyscenedetect", "samuraigpt_plugin"]
+
+# Candidate fusion strategy:
+# - weighted_sum: final_score = candidate_score * engine_weight
+# - rank_fusion: final_score = engine_weight * (1 / (rank + 4))
+selection_strategy = "weighted_sum"
+
+# Optional external plugin runner for SamurAIGPT backend.
+# Expected contract: executable that outputs JSON with clip list
+# (either to stdout or --output-manifest path).
+#
+# Example:
+# plugin_runner = "./storage/plugins/AI-Youtube-Shorts-Generator/run_adapter.sh"
+plugin_runner = ""
+
+# Per-engine fusion weights
+[multi_clipper.weights]
+native = 1.0
+auto_editor = 0.9
+pyscenedetect = 0.8
+samuraigpt_plugin = 1.1
+
 
 [proxy]
 ### Use a proxy to access the Pexels API

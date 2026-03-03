@@ -246,6 +246,122 @@ python main.py
 After launching, you can view the `API documentation` at http://127.0.0.1:8080/docs and directly test the interface
 online for a quick experience.
 
+## YouTube Auto-Clipping
+
+This repo now supports auto-clipping YouTube videos into vertical short clips:
+
+- Download video with `yt-dlp`
+- Local transcription with `faster-whisper` (fallback: `openai-whisper`)
+- Heuristic viral-moment scoring
+- Optional LLM-based score enhancement (if enabled in `config.toml`)
+- Vertical `9:16` clip rendering with `ffmpeg`
+- Multi-engine clipping suite (`native`, `auto_editor`, `pyscenedetect`, `samuraigpt_plugin`) with best-pick fusion
+
+### Dependencies
+
+Install required system binaries:
+
+```shell
+yt-dlp --version
+ffmpeg -version
+```
+
+Install Python dependencies:
+
+```shell
+pip install -r requirements.txt
+```
+
+Or use the one-shot installer:
+
+```shell
+bash scripts/install_clippers.sh
+```
+
+To install the optional SamurAIGPT plugin backend during setup:
+
+```shell
+INSTALL_SAMURAIGPT_PLUGIN=1 bash scripts/install_clippers.sh
+```
+
+### API Endpoint
+
+`POST /api/v1/clips/youtube`
+
+Example request body:
+
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "clip_count": 3,
+  "min_clip_duration": 20,
+  "max_clip_duration": 50,
+  "language": "en",
+  "llm_enhancement": false
+}
+```
+
+The response includes generated clips with local file paths and `/tasks/...` URLs.
+
+### Multi-Engine API Endpoint
+
+`POST /api/v1/clips/youtube/multi`
+
+Example request body:
+
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "clip_count": 3,
+  "min_clip_duration": 20,
+  "max_clip_duration": 50,
+  "language": "en",
+  "engines": ["native", "auto_editor", "pyscenedetect"],
+  "llm_enhancement": false
+}
+```
+
+You can also pass a local file path via `source_video` instead of `youtube_url`.
+Outputs are written to:
+
+- `storage/tasks/<task_id>/clips/<engine>/`
+- `storage/tasks/<task_id>/best/`
+
+Selection behavior is configured in `config.toml` under `[multi_clipper]`.
+
+### CLI Script
+
+```shell
+python scripts/auto_clip.py \
+  --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  --clip-count 3 \
+  --min-duration 20 \
+  --max-duration 50 \
+  --language en
+```
+
+Multi-engine CLI:
+
+```shell
+python scripts/auto_clip_multi.py \
+  --url "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  --clip-count 3 \
+  --min-duration 20 \
+  --max-duration 50 \
+  --engines "native,auto_editor,pyscenedetect"
+```
+
+Local-file smoke test example:
+
+```shell
+python scripts/auto_clip_multi.py \
+  --source-video test/resources/1.png.mp4 \
+  --clip-count 1 \
+  --min-duration 1 \
+  --max-duration 8 \
+  --engines "pyscenedetect"
+```
+
 ## Voice Synthesis 🗣
 
 A list of all supported voices can be viewed here: [Voice List](./docs/voice-list.txt)
